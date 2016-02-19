@@ -23,7 +23,7 @@ class ConnectionResource(object):
         self._queue.put_nowait(self._conn)
 
     def __enter__(self):
-        return self.conn
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.release()
