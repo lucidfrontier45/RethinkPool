@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 
-import threading
-import time
 from logging import getLogger
 
 import rethinkdb as r
 from future.builtins import range
 from future.moves.queue import Queue
-from rethinkdb.errors import ReqlDriverError
 
 logger = getLogger("RethinkPool")
 
@@ -56,6 +53,7 @@ class RethinkPool(object):
         :param host, port, ...: same as r.connect
         """
 
+        self._current_conns = 0
         self.reconnect_interval = reconnect_interval
         self.get_timeout = get_timeout
         if ssl is None:
@@ -71,40 +69,28 @@ class RethinkPool(object):
             "other": kwargs
         }
 
-        self._ready_conns = Queue(max_conns)
-        self._uncleaned_conns = Queue(max_conns)
-        for _ in range(min(max_conns, initial_conns)):
-            self._ready_conns.put(connect_to_rethinkdb(self._connection_info))
+        self._queue = Queue(max_conns)
+        for _ in range(min(max_conns, min(initial_conns, max_conns))):
+            self._queue.put(self._create_connection())
 
-        self._internal_thread = threading.Thread(target=self._prepare_conns)
-        self._internal_thread.setDaemon(True)
-        self._internal_thread.start()
+    def _create_connection(self):
+        conn = connect_to_rethinkdb(self._connection_info)
+        self._current_conns += 1
+        return conn
 
     @property
     def current_conns(self):
-        return self._ready_conns.qsize() + self._uncleaned_conns.qsize()
-
-    def _prepare_conns(self):
-        while True:
-            conn = self._uncleaned_conns.get()
-            try:
-                conn.reconnect(noreply_wait=False)
-                self._ready_conns.put(conn)
-                logger.info("reconnected, current ready conns = {}".format(self._ready_conns.qsize()))
-            except ReqlDriverError:
-                logger.warn("connection failed")
-                self._uncleaned_conns.put(conn)
-                time.sleep(self.reconnect_interval)
+        return self._current_conns
 
     def get_resource(self):
         """
         obtain a connection resource from the queue
         :return: ConnectionResource object
         """
-        if self._ready_conns.empty() and self.current_conns < self._ready_conns.maxsize:
+        if self._queue.empty() and self.current_conns < self._queue.maxsize:
             logger.info("create a new connection")
             conn = connect_to_rethinkdb(self._connection_info)
         else:
             logger.info("reuse a connection")
-            conn = self._ready_conns.get(True, self.get_timeout)
-        return ConnectionResource(self._uncleaned_conns, conn)
+            conn = self._queue.get(True, self.get_timeout)
+        return ConnectionResource(self._queue, conn)
