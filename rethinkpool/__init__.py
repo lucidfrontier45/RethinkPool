@@ -10,12 +10,16 @@ logger = getLogger("RethinkPool")
 
 
 class ConnectionResource(object):
-    def __init__(self, queue, conn, host='localhost', port=28015, db=None, auth_key="", timeout=20, ssl=None, **kwargs):
+
+    def __init__(self, queue, conn,
+                 host='localhost', port=28015, db=None,
+                 user="admin", password="", timeout=20, ssl=None, **kwargs):
         self._queue = queue
         if conn:
             self._conn = conn
         else:
-            self._conn = r.connect(host, port, db, auth_key, timeout, ssl, **kwargs)
+            self._conn = r.connect(
+                host, port, db, user, password, timeout, ssl, **kwargs)
 
     @property
     def conn(self):
@@ -39,13 +43,17 @@ class ConnectionResource(object):
 
 def connect_to_rethinkdb(info):
     return r.connect(
-        info["host"], info["port"], info["db"], info["auth_key"], info["timeout"], info["ssl"], **info["other"]
+        info["host"], info["port"], info["db"], info["user"], info["password"],
+        info["timeout"], info["ssl"], **info["other"]
     )
 
 
 class RethinkPool(object):
-    def __init__(self, max_conns=10, initial_conns=0, get_timeout=10, host='localhost', port=28015, db=None,
-                 auth_key="", timeout=20, ssl=None, reconnect_interval=20, **kwargs):
+
+    def __init__(self, max_conns=10, initial_conns=0, get_timeout=10,
+                 host='localhost', port=28015, db=None,
+                 user="admin", password="", timeout=20, ssl=None,
+                 reconnect_interval=20, **kwargs):
         """
         :param max_conns: maximum number of connections
         :param initial_conns: number of connections to be initially establish
@@ -63,7 +71,8 @@ class RethinkPool(object):
             "host": host,
             "port": port,
             "db": db,
-            "auth_key": auth_key,
+            "user": user,
+            "password": password,
             "timeout": timeout,
             "ssl": ssl,
             "other": kwargs
