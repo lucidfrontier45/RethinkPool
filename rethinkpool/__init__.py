@@ -12,14 +12,15 @@ logger = getLogger("RethinkPool")
 class ConnectionResource(object):
 
     def __init__(self, queue, conn,
-                 host='localhost', port=28015, db=None,
-                 user="admin", password="", timeout=20, ssl=None, **kwargs):
+                 host='localhost', port=r.DEFAULT_PORT, db=None,
+                 auth_key=None, user='admin', password=None,
+                 timeout=20, ssl=dict(), _handshake_version=10, **kwargs):
         self._queue = queue
         if conn:
             self._conn = conn
         else:
             self._conn = r.connect(
-                host, port, db, user, password, timeout, ssl, **kwargs)
+                host, port, db, auth_key, user, password, timeout, ssl, **kwargs)
 
     @property
     def conn(self):
@@ -43,7 +44,8 @@ class ConnectionResource(object):
 
 def connect_to_rethinkdb(info):
     return r.connect(
-        info["host"], info["port"], info["db"], info["user"], info["password"],
+        info["host"], info["port"], info["db"],
+        info["auth_key"], info["user"], info["password"],
         info["timeout"], info["ssl"], **info["other"]
     )
 
@@ -51,9 +53,9 @@ def connect_to_rethinkdb(info):
 class RethinkPool(object):
 
     def __init__(self, max_conns=10, initial_conns=0, get_timeout=10,
-                 host='localhost', port=28015, db=None,
-                 user="admin", password="", timeout=20, ssl=None,
-                 reconnect_interval=20, **kwargs):
+                 host='localhost', port=r.DEFAULT_PORT, db=None,
+                 auth_key=None, user="admin", password="",
+                 timeout=20, ssl=dict(), reconnect_interval=20, **kwargs):
         """
         :param max_conns: maximum number of connections
         :param initial_conns: number of connections to be initially establish
@@ -71,6 +73,7 @@ class RethinkPool(object):
             "host": host,
             "port": port,
             "db": db,
+            "auth_key": auth_key,
             "user": user,
             "password": password,
             "timeout": timeout,
