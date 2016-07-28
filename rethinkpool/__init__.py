@@ -11,16 +11,12 @@ logger = getLogger("RethinkPool")
 
 class ConnectionResource(object):
 
-    def __init__(self, queue, conn,
-                 host='localhost', port=r.DEFAULT_PORT, db=None,
-                 auth_key=None, user='admin', password=None,
-                 timeout=20, ssl=dict(), _handshake_version=10, **kwargs):
+    def __init__(self, queue, conn, **kwds):
         self._queue = queue
         if conn:
             self._conn = conn
         else:
-            self._conn = r.connect(
-                host, port, db, auth_key, user, password, timeout, ssl, **kwargs)
+            self._conn = r.connect(**kwds)
 
     @property
     def conn(self):
@@ -53,9 +49,7 @@ def connect_to_rethinkdb(info):
 class RethinkPool(object):
 
     def __init__(self, max_conns=10, initial_conns=0, get_timeout=10,
-                 host='localhost', port=r.DEFAULT_PORT, db=None,
-                 auth_key=None, user="admin", password="",
-                 timeout=20, ssl=dict(), reconnect_interval=20, **kwargs):
+                 reconnect_interval=20, **kwds):
         """
         :param max_conns: maximum number of connections
         :param initial_conns: number of connections to be initially establish
@@ -66,27 +60,15 @@ class RethinkPool(object):
         self._current_conns = 0
         self.reconnect_interval = reconnect_interval
         self.get_timeout = get_timeout
-        if ssl is None:
-            ssl = dict()
 
-        self._connection_info = {
-            "host": host,
-            "port": port,
-            "db": db,
-            "auth_key": auth_key,
-            "user": user,
-            "password": password,
-            "timeout": timeout,
-            "ssl": ssl,
-            "other": kwargs
-        }
+        self._connection_info = kwds
 
         self._queue = Queue(max_conns)
         for _ in range(min(max_conns, min(initial_conns, max_conns))):
             self._queue.put(self._create_connection())
 
     def _create_connection(self):
-        conn = connect_to_rethinkdb(self._connection_info)
+        conn = r.connect(**self._connection_info)
         self._current_conns += 1
         return conn
 
@@ -101,7 +83,7 @@ class RethinkPool(object):
         """
         if self._queue.empty() and self.current_conns < self._queue.maxsize:
             logger.info("create a new connection")
-            conn = connect_to_rethinkdb(self._connection_info)
+            conn = r.connect(**self._connection_info)
         else:
             logger.info("reuse a connection")
             conn = self._queue.get(True, self.get_timeout)
