@@ -38,14 +38,6 @@ class ConnectionResource(object):
         self.release()
 
 
-def connect_to_rethinkdb(info):
-    return r.connect(
-        info["host"], info["port"], info["db"],
-        info["auth_key"], info["user"], info["password"],
-        info["timeout"], info["ssl"], **info["other"]
-    )
-
-
 class RethinkPool(object):
 
     def __init__(self, max_conns=10, initial_conns=0, get_timeout=10,
