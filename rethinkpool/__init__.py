@@ -40,8 +40,7 @@ class ConnectionResource(object):
 
 class RethinkPool(object):
 
-    def __init__(self, max_conns=10, initial_conns=0, get_timeout=10,
-                 reconnect_interval=20, **kwds):
+    def __init__(self, max_conns=10, initial_conns=0, get_timeout=10, **kwds):
         """
         :param max_conns: maximum number of connections
         :param initial_conns: number of connections to be initially establish
@@ -50,7 +49,6 @@ class RethinkPool(object):
         """
 
         self._current_conns = 0
-        self.reconnect_interval = reconnect_interval
         self.get_timeout = get_timeout
 
         self._connection_info = kwds
