@@ -73,7 +73,7 @@ class RethinkPool(object):
         """
         if self._queue.empty() and self.current_conns < self._queue.maxsize:
             logger.info("create a new connection")
-            conn = r.connect(**self._connection_info)
+            conn = self._create_connection()
         else:
             logger.info("reuse a connection")
             conn = self._queue.get(True, self.get_timeout)
